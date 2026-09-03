@@ -297,15 +297,11 @@ def main():
         output = str(Path(args.input_csv).with_suffix("")) + "_streamfunction.png"
 
     stage_start = perf_counter()
-<<<<<<< HEAD
 
-=======
-    
     # Determine axis labels
     xlabel = args.xlabel if args.xlabel else horizontal
     ylabel = args.ylabel if args.ylabel else vertical
-    
->>>>>>> refs/remotes/origin/main
+
     # Determine label for background
     background_label = args.background_label if args.background_label else args.background_colormap
 
@@ -331,7 +327,7 @@ def main():
             vmin, vmax = args.background_clim
             background_plot = np.clip(background_plot, vmin, vmax)
             print(f"Background colormap clamped to range [{vmin}, {vmax}]")
-        
+
         # Use pcolormesh for smooth interpolation instead of contourf with levels
         im_bg = main_ax.pcolormesh(
             x, y, background_plot, cmap="jet", shading="auto",
@@ -353,7 +349,7 @@ def main():
         vmin, vmax = args.velocity_clim
         speed_plot = np.clip(speed_plot, vmin, vmax)
         print(f"Velocity colormap clamped to range [{vmin}, {vmax}]")
-    
+
     stream = main_ax.streamplot(
         x,
         y,
@@ -380,7 +376,7 @@ def main():
         default_ticks = cbar_vel.get_ticks()
         bound_ticks = sorted(set(list(default_ticks) + list(args.velocity_clim)))
         cbar_vel.set_ticks(bound_ticks)
-    
+
     main_ax.set(title="Velocity streamlines", xlabel=xlabel, ylabel=ylabel)
     main_ax.set_aspect("equal")
 
