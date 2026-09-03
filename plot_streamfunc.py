@@ -82,6 +82,18 @@ def parse_args():
         default=None,
         help="CSV column name to plot as background heatmap behind streamlines (e.g., t for temperature).",
     )
+    parser.add_argument(
+        "--background-label",
+        type=str,
+        default=None,
+        help="Label for background colorbar (default: column name).",
+    )
+    parser.add_argument(
+        "--velocity-label",
+        type=str,
+        default="Speed",
+        help="Label for velocity colorbar (default: Speed).",
+    )
     parser.add_argument("--show", action="store_true", help="Also display the figure.")
     return parser.parse_args()
 
@@ -241,24 +253,32 @@ def main():
 
     stage_start = perf_counter()
     
-    # Determine number of subplots
-    num_plots = 1 + (1 if args.plot_streamfunction else 0)
-    figure, axes = plt.subplots(1, num_plots, figsize=(12 if num_plots == 2 else 6, 5), constrained_layout=True)
+    # Determine label for background
+    background_label = args.background_label if args.background_label else args.background_colormap
     
-    # Handle axes as array consistently
-    if num_plots == 1:
-        axes = [axes]
+    # Create figure with custom layout
+    if args.plot_streamfunction:
+        # Two subplots side by side
+        figure, axes = plt.subplots(1, 2, figsize=(14, 5), constrained_layout=False)
+        main_ax = axes[0]
+        stream_func_ax = axes[1]
+    else:
+        # Single plot with colorbars positioned on the right
+        figure = plt.figure(figsize=(10, 6))
+        main_ax = figure.add_subplot(111)
+        stream_func_ax = None
     
     speed = np.hypot(u, v)
 
-    # Plot background colormap if requested
+    # Plot background colormap if requested (smooth interpolation)
     if background is not None:
-        # Use jet colormap for background
-        im = axes[0].contourf(x, y, background, levels=50, cmap="jet")
-        figure.colorbar(im, ax=axes[0], label=args.background_colormap)
+        # Use pcolormesh for smooth interpolation instead of contourf with levels
+        im_bg = main_ax.pcolormesh(x, y, background, cmap="jet", shading="auto")
+        cbar_bg = figure.colorbar(im_bg, ax=main_ax, label=background_label, 
+                                   fraction=0.046, pad=0.04)
 
     # Plot streamlines colored by speed using white-to-black colormap
-    stream = axes[0].streamplot(
+    stream = main_ax.streamplot(
         x,
         y,
         u,
@@ -273,17 +293,18 @@ def main():
         * max(x.max() - x.min(), y.max() - y.min()),
         broken_streamlines=args.broken_streamlines,
     )
-    figure.colorbar(stream.lines, ax=axes[0], label="Speed")
-    axes[0].set(title="Velocity streamlines", xlabel=horizontal, ylabel=vertical)
+    cbar_vel = figure.colorbar(stream.lines, ax=main_ax, label=args.velocity_label,
+                                fraction=0.046, pad=0.04)
+    main_ax.set(title="Velocity streamlines", xlabel=horizontal, ylabel=vertical)
+    main_ax.set_aspect("equal")
 
-    if args.plot_streamfunction:
-        contours = axes[1].contour(x, y, psi, levels=args.levels, colors="black", linewidths=0.8)
-        axes[1].clabel(contours, inline=True, fontsize=7)
-        axes[1].set(title=r"Stream function $\psi$", xlabel=horizontal, ylabel=vertical)
-        axes[1].set_aspect("equal")
+    if stream_func_ax is not None:
+        contours = stream_func_ax.contour(x, y, psi, levels=args.levels, colors="black", linewidths=0.8)
+        stream_func_ax.clabel(contours, inline=True, fontsize=7)
+        stream_func_ax.set(title=r"Stream function $\psi$", xlabel=horizontal, ylabel=vertical)
+        stream_func_ax.set_aspect("equal")
 
-    axes[0].set_aspect("equal")
-    figure.savefig(output, dpi=200)
+    figure.savefig(output, dpi=200, bbox_inches="tight")
     print(f"Plot and save time: {perf_counter() - stage_start:.3f} s")
     print(f"Stream function range: [{psi.min():.16e}, {psi.max():.16e}]")
     print(f"Wrote {output}")
