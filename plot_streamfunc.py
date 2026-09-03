@@ -70,6 +70,18 @@ def parse_args():
         default=True,
         help="Allow broken streamlines: 0/false or 1/true (default: True).",
     )
+    parser.add_argument(
+        "--plot-streamfunction",
+        type=lambda x: x.lower() in ("true", "1", "yes"),
+        default=True,
+        help="Plot stream-function contours: 0/false or 1/true (default: True).",
+    )
+    parser.add_argument(
+        "--temperature-colormap",
+        type=lambda x: x.lower() in ("true", "1", "yes"),
+        default=False,
+        help="Color streamlines by temperature instead of speed: 0/false or 1/true (default: False).",
+    )
     parser.add_argument("--show", action="store_true", help="Also display the figure.")
     return parser.parse_args()
 
@@ -103,12 +115,16 @@ def plane_definition(shape):
     )
 
 
-def make_plane_arrays(data, horizontal, vertical, u_name, v_name, shape):
+def make_plane_arrays(data, horizontal, vertical, u_name, v_name, shape, scalar_name=None):
     required = (horizontal, vertical, u_name, v_name)
     missing = [name for name in required if name not in data.dtype.names]
     if missing:
         available = ", ".join(data.dtype.names)
         raise ValueError(f"Missing CSV columns: {', '.join(missing)}. Available: {available}")
+
+    if scalar_name is not None and scalar_name not in data.dtype.names:
+        available = ", ".join(data.dtype.names)
+        raise ValueError(f"Missing CSV column: {scalar_name}. Available: {available}")
 
     x = np.unique(data[horizontal])
     y = np.unique(data[vertical])
@@ -146,7 +162,14 @@ def make_plane_arrays(data, horizontal, vertical, u_name, v_name, shape):
     if np.isnan(u).any() or np.isnan(v).any():
         raise ValueError("The CSV does not contain a complete rectangular plane.")
 
-    return x, y, u, v, dx, dy
+    scalar = None
+    if scalar_name is not None:
+        scalar = np.full((ny, nx), np.nan)
+        scalar[iy, ix] = data[scalar_name]
+        if np.isnan(scalar).any():
+            raise ValueError(f"The CSV does not contain complete {scalar_name} data.")
+
+    return x, y, u, v, dx, dy, scalar
 
 
 def solve_streamfunction(u, v, dx, dy):
@@ -196,8 +219,9 @@ def main():
     )
 
     stage_start = perf_counter()
-    x, y, u, v, dx, dy = make_plane_arrays(
-        data, horizontal, vertical, u_name, v_name, args.shape
+    scalar_name = "temperature" if args.temperature_colormap else None
+    x, y, u, v, dx, dy, scalar = make_plane_arrays(
+        data, horizontal, vertical, u_name, v_name, args.shape, scalar_name=scalar_name
     )
     print(f"Grid reconstruction time: {perf_counter() - stage_start:.3f} s")
     print(
@@ -217,16 +241,25 @@ def main():
         output = str(Path(args.input_csv).with_suffix("")) + "_streamfunction.png"
 
     stage_start = perf_counter()
-    figure, axes = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
+    
+    # Determine number of subplots
+    num_plots = 1 + (1 if args.plot_streamfunction else 0)
+    figure, axes = plt.subplots(1, num_plots, figsize=(12 if num_plots == 2 else 6, 5), constrained_layout=True)
+    
+    # Handle axes as array consistently
+    if num_plots == 1:
+        axes = [axes]
+    
     speed = np.hypot(u, v)
+    color_field = scalar if args.temperature_colormap else speed
+    color_label = "Temperature" if args.temperature_colormap else "Speed"
 
-    print(f"HERE! {args.broken_streamlines}")
     stream = axes[0].streamplot(
         x,
         y,
         u,
         v,
-        color=speed,
+        color=color_field,
         density=args.density,
         cmap="viridis",
         linewidth=1.0,
@@ -236,15 +269,16 @@ def main():
         * max(x.max() - x.min(), y.max() - y.min()),
         broken_streamlines=args.broken_streamlines,
     )
-    figure.colorbar(stream.lines, ax=axes[0], label="Speed")
+    figure.colorbar(stream.lines, ax=axes[0], label=color_label)
     axes[0].set(title="Velocity streamlines", xlabel=horizontal, ylabel=vertical)
 
-    contours = axes[1].contour(x, y, psi, levels=args.levels, colors="black", linewidths=0.8)
-    axes[1].clabel(contours, inline=True, fontsize=7)
-    axes[1].set(title=r"Stream function $\psi$", xlabel=horizontal, ylabel=vertical)
+    if args.plot_streamfunction:
+        contours = axes[1].contour(x, y, psi, levels=args.levels, colors="black", linewidths=0.8)
+        axes[1].clabel(contours, inline=True, fontsize=7)
+        axes[1].set(title=r"Stream function $\psi$", xlabel=horizontal, ylabel=vertical)
+        axes[1].set_aspect("equal")
 
-    for axis in axes:
-        axis.set_aspect("equal")
+    axes[0].set_aspect("equal")
     figure.savefig(output, dpi=200)
     print(f"Plot and save time: {perf_counter() - stage_start:.3f} s")
     print(f"Stream function range: [{psi.min():.16e}, {psi.max():.16e}]")
