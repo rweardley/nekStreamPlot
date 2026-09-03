@@ -252,10 +252,10 @@ def main():
         output = str(Path(args.input_csv).with_suffix("")) + "_streamfunction.png"
 
     stage_start = perf_counter()
-    
+
     # Determine label for background
     background_label = args.background_label if args.background_label else args.background_colormap
-    
+
     # Create figure with custom layout
     if args.plot_streamfunction:
         # Two subplots side by side
@@ -267,15 +267,16 @@ def main():
         figure = plt.figure(figsize=(10, 6))
         main_ax = figure.add_subplot(111)
         stream_func_ax = None
-    
+
     speed = np.hypot(u, v)
 
     # Plot background colormap if requested (smooth interpolation)
     if background is not None:
         # Use pcolormesh for smooth interpolation instead of contourf with levels
         im_bg = main_ax.pcolormesh(x, y, background, cmap="jet", shading="auto")
-        cbar_bg = figure.colorbar(im_bg, ax=main_ax, label=background_label, 
-                                   fraction=0.046, pad=0.04)
+        cbar_bg = figure.colorbar(
+            im_bg, ax=main_ax, label=background_label, fraction=0.046, pad=0.15
+        )
 
     # Plot streamlines colored by speed using white-to-black colormap
     stream = main_ax.streamplot(
