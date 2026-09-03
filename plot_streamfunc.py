@@ -19,6 +19,7 @@ from time import perf_counter
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.ticker as ticker
 import numpy as np
 from scipy.sparse import diags, eye, kron
 from scipy.sparse.linalg import factorized
@@ -115,6 +116,18 @@ def parse_args():
         nargs=4,
         metavar=("Y_MIN", "Y_MAX", "Z_MIN", "Z_MAX"),
         help="Constrain streamlines to domain bounds and draw a box. Format: y_min y_max z_min z_max",
+    )
+    parser.add_argument(
+        "--xlabel",
+        type=str,
+        default=None,
+        help="Custom label for horizontal axis (default: auto-detected from shape).",
+    )
+    parser.add_argument(
+        "--ylabel",
+        type=str,
+        default=None,
+        help="Custom label for vertical axis (default: auto-detected from shape).",
     )
     parser.add_argument("--show", action="store_true", help="Also display the figure.")
     return parser.parse_args()
@@ -285,6 +298,10 @@ def main():
 
     stage_start = perf_counter()
     
+    # Determine axis labels
+    xlabel = args.xlabel if args.xlabel else horizontal
+    ylabel = args.ylabel if args.ylabel else vertical
+    
     # Determine label for background
     background_label = args.background_label if args.background_label else args.background_colormap
     
@@ -320,6 +337,11 @@ def main():
         cbar_bg = figure.colorbar(
             im_bg, ax=main_ax, label=background_label, fraction=0.046, pad=0.15
         )
+        # Add bounds ticks to the default ticks if specified
+        if args.background_clim is not None:
+            default_ticks = cbar_bg.get_ticks()
+            bound_ticks = sorted(set(list(default_ticks) + list(args.background_clim)))
+            cbar_bg.set_ticks(bound_ticks)
 
     # Plot streamlines colored by speed using white-to-black colormap
     speed_plot = speed.copy()
@@ -345,7 +367,13 @@ def main():
     )
     cbar_vel = figure.colorbar(stream.lines, ax=main_ax, label=args.velocity_label,
                                 fraction=0.046, pad=0.04)
-    main_ax.set(title="Velocity streamlines", xlabel=horizontal, ylabel=vertical)
+    # Add bounds ticks to the default ticks if specified
+    if args.velocity_clim is not None:
+        default_ticks = cbar_vel.get_ticks()
+        bound_ticks = sorted(set(list(default_ticks) + list(args.velocity_clim)))
+        cbar_vel.set_ticks(bound_ticks)
+    
+    main_ax.set(title="Velocity streamlines", xlabel=xlabel, ylabel=ylabel)
     main_ax.set_aspect("equal")
 
     # Draw domain bounds box if specified
@@ -360,7 +388,7 @@ def main():
     if stream_func_ax is not None:
         contours = stream_func_ax.contour(x, y, psi, levels=args.levels, colors="black", linewidths=0.8)
         stream_func_ax.clabel(contours, inline=True, fontsize=7)
-        stream_func_ax.set(title=r"Stream function $\psi$", xlabel=horizontal, ylabel=vertical)
+        stream_func_ax.set(title=r"Stream function $\psi$", xlabel=xlabel, ylabel=ylabel)
         stream_func_ax.set_aspect("equal")
 
     figure.savefig(output, dpi=200, bbox_inches="tight")
