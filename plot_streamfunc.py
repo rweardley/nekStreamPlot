@@ -66,9 +66,9 @@ def parse_args():
     )
     parser.add_argument(
         "--broken-streamlines",
-        type=bool,
+        type=lambda x: x.lower() in ("true", "1", "yes"),
         default=True,
-        help="Allow streamlines to be broken (default: True).",
+        help="Allow broken streamlines: 0/false or 1/true (default: True).",
     )
     parser.add_argument("--show", action="store_true", help="Also display the figure.")
     return parser.parse_args()
