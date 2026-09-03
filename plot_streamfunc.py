@@ -270,10 +270,10 @@ def main():
         output = str(Path(args.input_csv).with_suffix("")) + "_streamfunction.png"
 
     stage_start = perf_counter()
-    
+
     # Determine label for background
     background_label = args.background_label if args.background_label else args.background_colormap
-    
+
     # Create figure with custom layout
     if args.plot_streamfunction:
         # Two subplots side by side
@@ -285,7 +285,7 @@ def main():
         figure = plt.figure(figsize=(10, 6))
         main_ax = figure.add_subplot(111)
         stream_func_ax = None
-    
+
     speed = np.hypot(u, v)
 
     # Plot background colormap if requested (smooth interpolation)
@@ -314,15 +314,23 @@ def main():
     )
     cbar_vel = figure.colorbar(stream.lines, ax=main_ax, label=args.velocity_label,
                                 fraction=0.046, pad=0.04)
-    main_ax.set(title="Velocity streamlines", xlabel=horizontal, ylabel=vertical)
+    if args.plot_streamfunction:
+        main_ax.set(
+            title="Velocity streamlines", xlabel=horizontal, ylabel=vertical
+        )
     main_ax.set_aspect("equal")
 
     # Draw domain bounds box if specified
     if args.domain_bounds is not None:
         y_min, y_max, z_min, z_max = args.domain_bounds
         rect = patches.Rectangle(
-            (y_min, z_min), y_max - y_min, z_max - z_min,
-            linewidth=2, edgecolor="white", facecolor="none", linestyle="--"
+            (y_min, z_min),
+            y_max - y_min,
+            z_max - z_min,
+            linewidth=1,
+            edgecolor="black",
+            facecolor="none",
+            linestyle=":",
         )
         main_ax.add_patch(rect)
 
