@@ -203,7 +203,14 @@ def main():
     speed = np.hypot(u, v)
 
     stream = axes[0].streamplot(
-        x, y, u, v, color=speed, density=args.density, cmap="viridis", linewidth=1.0, minlength=2
+        x,
+        y,
+        u,
+        v,
+        color=speed,
+        density=args.density,
+        cmap="viridis",
+        linewidth=1.0,
     )
     figure.colorbar(stream.lines, ax=axes[0], label="Speed")
     axes[0].set(title="Velocity streamlines", xlabel=horizontal, ylabel=vertical)
@@ -226,4 +233,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
