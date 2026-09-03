@@ -52,6 +52,24 @@ def parse_args():
         default=25,
         help="Number of stream-function contour levels (default: 25).",
     )
+    parser.add_argument(
+        "--min-length",
+        type=float,
+        default=0.1,
+        help="Relative minimum length for streamlines (default: 0.1).",
+    )
+    parser.add_argument(
+        "--integration-length",
+        type=float,
+        default=1.0,
+        help="Relative integration length for streamlines (default: 1.0).",
+    )
+    parser.add_argument(
+        "--broken-streamlines",
+        type=bool,
+        default=True,
+        help="Allow streamlines to be broken (default: True).",
+    )
     parser.add_argument("--show", action="store_true", help="Also display the figure.")
     return parser.parse_args()
 
@@ -202,6 +220,7 @@ def main():
     figure, axes = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
     speed = np.hypot(u, v)
 
+    print(f"HERE! {args.broken_streamlines}")
     stream = axes[0].streamplot(
         x,
         y,
@@ -211,6 +230,11 @@ def main():
         density=args.density,
         cmap="viridis",
         linewidth=1.0,
+        integration_direction="both",
+        minlength=args.min_length,
+        maxlength=args.integration_length
+        * max(x.max() - x.min(), y.max() - y.min()),
+        broken_streamlines=args.broken_streamlines,
     )
     figure.colorbar(stream.lines, ax=axes[0], label="Speed")
     axes[0].set(title="Velocity streamlines", xlabel=horizontal, ylabel=vertical)
