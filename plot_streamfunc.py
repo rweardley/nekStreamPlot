@@ -77,10 +77,10 @@ def parse_args():
         help="Plot stream-function contours: 0/false or 1/true (default: True).",
     )
     parser.add_argument(
-        "--temperature-colormap",
-        type=lambda x: x.lower() in ("true", "1", "yes"),
-        default=False,
-        help="Color streamlines by temperature instead of speed: 0/false or 1/true (default: False).",
+        "--background-colormap",
+        type=str,
+        default=None,
+        help="CSV column name to plot as background heatmap behind streamlines (e.g., temperature).",
     )
     parser.add_argument("--show", action="store_true", help="Also display the figure.")
     return parser.parse_args()
@@ -219,9 +219,8 @@ def main():
     )
 
     stage_start = perf_counter()
-    scalar_name = "temperature" if args.temperature_colormap else None
-    x, y, u, v, dx, dy, scalar = make_plane_arrays(
-        data, horizontal, vertical, u_name, v_name, args.shape, scalar_name=scalar_name
+    x, y, u, v, dx, dy, background = make_plane_arrays(
+        data, horizontal, vertical, u_name, v_name, args.shape, scalar_name=args.background_colormap
     )
     print(f"Grid reconstruction time: {perf_counter() - stage_start:.3f} s")
     print(
@@ -251,15 +250,19 @@ def main():
         axes = [axes]
     
     speed = np.hypot(u, v)
-    color_field = scalar if args.temperature_colormap else speed
-    color_label = "Temperature" if args.temperature_colormap else "Speed"
 
+    # Plot background colormap if requested
+    if background is not None:
+        im = axes[0].contourf(x, y, background, levels=50, cmap="viridis")
+        figure.colorbar(im, ax=axes[0], label=args.background_colormap)
+
+    # Plot streamlines colored by speed
     stream = axes[0].streamplot(
         x,
         y,
         u,
         v,
-        color=color_field,
+        color=speed,
         density=args.density,
         cmap="viridis",
         linewidth=1.0,
@@ -269,7 +272,7 @@ def main():
         * max(x.max() - x.min(), y.max() - y.min()),
         broken_streamlines=args.broken_streamlines,
     )
-    figure.colorbar(stream.lines, ax=axes[0], label=color_label)
+    figure.colorbar(stream.lines, ax=axes[0], label="Speed")
     axes[0].set(title="Velocity streamlines", xlabel=horizontal, ylabel=vertical)
 
     if args.plot_streamfunction:
