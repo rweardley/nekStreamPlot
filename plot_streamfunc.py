@@ -24,7 +24,6 @@ import numpy as np
 from scipy.sparse import diags, eye, kron
 from scipy.sparse.linalg import factorized
 
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Plot streamlines and stream-function contours from a 2D CSV slice."
@@ -318,6 +317,7 @@ def main():
         stream_func_ax = None
 
     speed = np.hypot(u, v)
+    print(f"Speed range: [{speed.min():.16e}, {speed.max():.16e}]")
 
     # Plot background colormap if requested (smooth interpolation)
     if background is not None:
@@ -335,12 +335,19 @@ def main():
             vmax=args.background_clim[1] if args.background_clim else background_plot.max(),
         )
         cbar_bg = figure.colorbar(
-            im_bg, ax=main_ax, label=background_label, fraction=0.046, pad=0.15
+            im_bg, ax=main_ax, label=background_label, fraction=0.046, pad=0.1
         )
+        cbar_bg.formatter.set_powerlimits((-4, 5))
+        cbar_bg.formatter.set_useMathText(True)
         # Add bounds ticks to the default ticks if specified
         if args.background_clim is not None:
             default_ticks = cbar_bg.get_ticks()
-            bound_ticks = sorted(set(list(default_ticks) + list(args.background_clim)))
+            default_ticks_masked = np.ma.masked_outside(
+                default_ticks, args.background_clim[0], args.background_clim[1]
+            ).compressed()
+            bound_ticks = sorted(
+                set(list(default_ticks_masked) + list(args.background_clim))
+            )
             cbar_bg.set_ticks(bound_ticks)
 
     # Plot streamlines colored by speed using white-to-black colormap
@@ -365,19 +372,32 @@ def main():
         * max(x.max() - x.min(), y.max() - y.min()),
         broken_streamlines=args.broken_streamlines,
     )
-    cbar_vel = figure.colorbar(stream.lines, ax=main_ax, label=args.velocity_label,
-                                fraction=0.046, pad=0.04)
+    cbar_vel = figure.colorbar(
+        stream.lines,
+        ax=main_ax,
+        label=args.velocity_label,
+        fraction=0.046,
+        pad=0.04,
+    )
+    cbar_vel.formatter.set_powerlimits((-4, 5))
+    cbar_vel.formatter.set_useMathText(True)
     if args.plot_streamfunction:
-        main_ax.set(
-            title="Velocity streamlines", xlabel=horizontal, ylabel=vertical
-        )
+        main_ax.set(title="Velocity streamlines")
+    main_ax.set(xlabel=xlabel, ylabel=ylabel)
     # Add bounds ticks to the default ticks if specified
     if args.velocity_clim is not None:
         default_ticks = cbar_vel.get_ticks()
-        bound_ticks = sorted(set(list(default_ticks) + list(args.velocity_clim)))
+        default_ticks_masked = np.ma.masked_outside(
+            default_ticks, args.velocity_clim[0], args.velocity_clim[1]
+        ).compressed()
+        bound_ticks = sorted(
+            set(list(default_ticks_masked) + list(args.velocity_clim))
+        )
         cbar_vel.set_ticks(bound_ticks)
 
-    main_ax.set(title="Velocity streamlines", xlabel=xlabel, ylabel=ylabel)
+    if args.plot_streamfunction:
+        main_ax.set(title="Velocity streamlines")
+    main_ax.set(xlabel=xlabel, ylabel=xlabel)
     main_ax.set_aspect("equal")
 
     # Draw domain bounds box if specified

@@ -31,6 +31,8 @@ python plot_streamfunc.py points_solid_rescaled.csv \
   --velocity-label "Velocity (m/s)"
 ```
 
+Integration length (allows broken lines)
+
 ```
 python plot_streamfunc.py points_solid_rescaled.csv \
   --shape 1 1001 1001 \
@@ -44,13 +46,38 @@ python plot_streamfunc.py points_solid_rescaled.csv \
   --domain-bounds -0.023 0.023 -0.023 0.023
 ```
 
-<!-- 
+Only use closed lines:
+
 ```
-python plot_streamfunc.py points_solid.csv \
+python plot_streamfunc.py points_solid_rescaled.csv \
   --shape 1 1001 1001 \
   --plot-streamfunction 0 \
-  --velocity-label "Velocity (ND)" \
+  --velocity-label "Velocity (m/s)" \
+  --velocity-clim 0 0.000438 \
   --background-colormap t \
-  --background-label "Temperature (ND)" \
-  --domain-bounds -1 1 -1 1
-``` -->
+  --background-label "Temperature (°C)" \
+  --background-clim 300 323.75 \
+  --domain-bounds -0.023 0.023 -0.023 0.023 \
+  --integration-length 10 \
+  --broken-streamlines 0 \
+  --density 0.5
+```
+
+Latest:
+
+```
+python plot_streamfunc.py points_solid_rescaled.csv \
+  --shape 1 1001 1001 \
+  --plot-streamfunction 0 \
+  --velocity-label "Velocity [m/s]" \
+  --velocity-clim 0 0.0004374 \
+  --background-colormap t \
+  --background-label "Temperature [°C]" \
+  --background-clim 300 323.75 \
+  --domain-bounds -0.023 0.023 -0.023 0.023 \
+  --integration-length 30 \
+  --broken-streamlines 0 \
+  --density 0.6 \
+  --xlabel "y [m]" \
+  --ylabel "z [m]"
+```
