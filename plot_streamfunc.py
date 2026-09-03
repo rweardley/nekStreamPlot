@@ -90,10 +90,24 @@ def parse_args():
         help="Label for background colorbar (default: column name).",
     )
     parser.add_argument(
+        "--background-clim",
+        type=float,
+        nargs=2,
+        metavar=("VMIN", "VMAX"),
+        help="Constrain background colormap range (values outside are clamped to min/max color).",
+    )
+    parser.add_argument(
         "--velocity-label",
         type=str,
         default="Speed",
         help="Label for velocity colorbar (default: Speed).",
+    )
+    parser.add_argument(
+        "--velocity-clim",
+        type=float,
+        nargs=2,
+        metavar=("VMIN", "VMAX"),
+        help="Constrain velocity colormap range (values outside are clamped to min/max color).",
     )
     parser.add_argument(
         "--domain-bounds",
@@ -290,19 +304,36 @@ def main():
 
     # Plot background colormap if requested (smooth interpolation)
     if background is not None:
+        # Clamp background values if clim is specified
+        background_plot = background.copy()
+        if args.background_clim is not None:
+            vmin, vmax = args.background_clim
+            background_plot = np.clip(background_plot, vmin, vmax)
+            print(f"Background colormap clamped to range [{vmin}, {vmax}]")
+        
         # Use pcolormesh for smooth interpolation instead of contourf with levels
-        im_bg = main_ax.pcolormesh(x, y, background, cmap="jet", shading="auto")
+        im_bg = main_ax.pcolormesh(
+            x, y, background_plot, cmap="jet", shading="auto",
+            vmin=args.background_clim[0] if args.background_clim else background_plot.min(),
+            vmax=args.background_clim[1] if args.background_clim else background_plot.max(),
+        )
         cbar_bg = figure.colorbar(
             im_bg, ax=main_ax, label=background_label, fraction=0.046, pad=0.15
         )
 
     # Plot streamlines colored by speed using white-to-black colormap
+    speed_plot = speed.copy()
+    if args.velocity_clim is not None:
+        vmin, vmax = args.velocity_clim
+        speed_plot = np.clip(speed_plot, vmin, vmax)
+        print(f"Velocity colormap clamped to range [{vmin}, {vmax}]")
+    
     stream = main_ax.streamplot(
         x,
         y,
         u,
         v,
-        color=speed,
+        color=speed_plot,
         density=args.density,
         cmap="gray_r",
         linewidth=1.0,
