@@ -80,7 +80,7 @@ def parse_args():
         "--background-colormap",
         type=str,
         default=None,
-        help="CSV column name to plot as background heatmap behind streamlines (e.g., temperature).",
+        help="CSV column name to plot as background heatmap behind streamlines (e.g., t for temperature).",
     )
     parser.add_argument("--show", action="store_true", help="Also display the figure.")
     return parser.parse_args()
@@ -253,10 +253,11 @@ def main():
 
     # Plot background colormap if requested
     if background is not None:
-        im = axes[0].contourf(x, y, background, levels=50, cmap="viridis")
+        # Use jet colormap for background
+        im = axes[0].contourf(x, y, background, levels=50, cmap="jet")
         figure.colorbar(im, ax=axes[0], label=args.background_colormap)
 
-    # Plot streamlines colored by speed
+    # Plot streamlines colored by speed using white-to-black colormap
     stream = axes[0].streamplot(
         x,
         y,
@@ -264,7 +265,7 @@ def main():
         v,
         color=speed,
         density=args.density,
-        cmap="viridis",
+        cmap="gray_r",
         linewidth=1.0,
         integration_direction="both",
         minlength=args.min_length,
