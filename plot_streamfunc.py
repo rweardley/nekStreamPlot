@@ -18,6 +18,7 @@ from pathlib import Path
 from time import perf_counter
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 from scipy.sparse import diags, eye, kron
 from scipy.sparse.linalg import factorized
@@ -94,6 +95,13 @@ def parse_args():
         default="Speed",
         help="Label for velocity colorbar (default: Speed).",
     )
+    parser.add_argument(
+        "--domain-bounds",
+        type=float,
+        nargs=4,
+        metavar=("Y_MIN", "Y_MAX", "Z_MIN", "Z_MAX"),
+        help="Constrain streamlines to domain bounds and draw a box. Format: y_min y_max z_min z_max",
+    )
     parser.add_argument("--show", action="store_true", help="Also display the figure.")
     return parser.parse_args()
 
@@ -127,7 +135,7 @@ def plane_definition(shape):
     )
 
 
-def make_plane_arrays(data, horizontal, vertical, u_name, v_name, shape, scalar_name=None):
+def make_plane_arrays(data, horizontal, vertical, u_name, v_name, shape, scalar_name=None, domain_bounds=None):
     required = (horizontal, vertical, u_name, v_name)
     missing = [name for name in required if name not in data.dtype.names]
     if missing:
@@ -181,6 +189,15 @@ def make_plane_arrays(data, horizontal, vertical, u_name, v_name, shape, scalar_
         if np.isnan(scalar).any():
             raise ValueError(f"The CSV does not contain complete {scalar_name} data.")
 
+    # Apply domain masking if specified
+    if domain_bounds is not None:
+        y_min, y_max, z_min, z_max = domain_bounds
+        # Create mask for points outside domain
+        mask = (np.abs(x) > y_max) | (np.abs(y) > z_max)
+        # Apply mask to velocity fields
+        u[np.abs(y) > z_max] = 0
+        v[np.abs(y) > z_max] = 0
+
     return x, y, u, v, dx, dy, scalar
 
 
@@ -232,7 +249,8 @@ def main():
 
     stage_start = perf_counter()
     x, y, u, v, dx, dy, background = make_plane_arrays(
-        data, horizontal, vertical, u_name, v_name, args.shape, scalar_name=args.background_colormap
+        data, horizontal, vertical, u_name, v_name, args.shape, 
+        scalar_name=args.background_colormap, domain_bounds=args.domain_bounds
     )
     print(f"Grid reconstruction time: {perf_counter() - stage_start:.3f} s")
     print(
@@ -252,10 +270,10 @@ def main():
         output = str(Path(args.input_csv).with_suffix("")) + "_streamfunction.png"
 
     stage_start = perf_counter()
-
+    
     # Determine label for background
     background_label = args.background_label if args.background_label else args.background_colormap
-
+    
     # Create figure with custom layout
     if args.plot_streamfunction:
         # Two subplots side by side
@@ -267,7 +285,7 @@ def main():
         figure = plt.figure(figsize=(10, 6))
         main_ax = figure.add_subplot(111)
         stream_func_ax = None
-
+    
     speed = np.hypot(u, v)
 
     # Plot background colormap if requested (smooth interpolation)
@@ -298,6 +316,15 @@ def main():
                                 fraction=0.046, pad=0.04)
     main_ax.set(title="Velocity streamlines", xlabel=horizontal, ylabel=vertical)
     main_ax.set_aspect("equal")
+
+    # Draw domain bounds box if specified
+    if args.domain_bounds is not None:
+        y_min, y_max, z_min, z_max = args.domain_bounds
+        rect = patches.Rectangle(
+            (y_min, z_min), y_max - y_min, z_max - z_min,
+            linewidth=2, edgecolor="white", facecolor="none", linestyle="--"
+        )
+        main_ax.add_patch(rect)
 
     if stream_func_ax is not None:
         contours = stream_func_ax.contour(x, y, psi, levels=args.levels, colors="black", linewidths=0.8)
