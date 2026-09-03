@@ -1,0 +1,5 @@
+*.csv
+*.nek5000
+*0.f*
+*.png
+venv
